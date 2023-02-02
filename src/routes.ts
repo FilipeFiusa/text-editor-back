@@ -14,5 +14,6 @@ routes.post('/user', usersController.create);
 routes.get('/user', usersController.getAllUsers);
 
 routes.post('/login', sessionController.create);
+routes.post('/session', sessionController.checkToken);
 
 export default routes;

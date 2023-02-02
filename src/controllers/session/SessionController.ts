@@ -1,35 +1,51 @@
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { Request, Response } from "express";
-// import AppDataSource from "../../data-source";
+import jwt from 'jsonwebtoken';
+import connection from '../../db/connection';
+
 dotenv.config();
+
+interface User {
+    id: number;
+    email: string;
+    password: string;
+    login: string;
+    username: string;
+    avatar: string;
+}
 
 export class SessionController{
     public async create(request: Request, response: Response){
-        // const { email, password } = request.body;
+        const { login, password } = request.body;
         
-        // const user = await AppDataSource.manager.findOne(User, {
-        //     where: {
-        //         email: email
-        //     }
-        // });
+        const user = await connection<User>("Users").select().where("login", login).first();
 
-        // if(!user || !bcriptjs.compareSync(password, user.password)){
-        //     response.status(400).json({msg: "Email ou Senha errados"});
-        //     return
-        // }
+        if(!user || !bcrypt.compareSync(password, user.password)){
+            response.status(400).json({msg: "Email ou Senha errados"});
+            return
+        }
 
-        // const token = jwt.sign({userId: user.id}, process.env.JWT_TOKEN_KEY);
+        const token = jwt.sign({userId: user.id, userName: user.username,}, process.env.JWT_TOKEN_KEY);
 
-        // response.json({
-        //     token: token 
-        // })
+        response.json({
+            userId: user.id,
+            userName: user.username,
+            token
+        })
     }
 
-    public async delete(request: Request, response: Response){
-        // const users = await AppDataSource.manager.find(User)
+    public async checkToken(request: Request, response: Response){
+        const { token } = request.body;
 
-        // response.json(users);
+        // verify a token symmetric
+        jwt.verify(token, process.env.JWT_TOKEN_KEY , (err: Error, decoded: any) => {
+            if(!err){
+                console.log(decoded) // bar
+                response.status(200).json({msg: "valid token", decoded});
+            }else{
+                response.status(400).json({msg: "invalid token"});
+            }
+        });
     }
-
-
 }
