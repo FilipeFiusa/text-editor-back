@@ -1,4 +1,5 @@
 import connection from "../../db/connection";
+import User from "../../model/User";
 import Workspace from "../../model/Workspace";
 
 interface Users_Workspaces{
@@ -75,8 +76,6 @@ export class WorkspaceDatabaseController{
         return workspace;
     }
 
-
-
     getWorkspaces = async (userId: number) => {       
         const userWorkspaces = await connection<Workspace[]>('Workspaces')
             .join('Users_Workspaces', 'Users_Workspaces.workspaceId', 'Workspaces.id')
@@ -111,6 +110,15 @@ export class WorkspaceDatabaseController{
         });
 
         return workspaces;
+    }
+
+    getWorkspaceUsers = async (workspaceId: number) => {
+        const Users = await connection<User>('Users')
+            .join('Users_Workspaces', 'Users_Workspaces.userId', 'Users.id')
+            .where('Users_Workspaces.workspaceId', workspaceId)
+            .select('Users_Workspaces.userId', "Users.username", "Users.avatar");
+
+        return Users;
     }
 
 }

@@ -3,6 +3,7 @@ import WorkspaceRoom from "./WorkspaceRoom";
 
 class User {
     id: string;
+    userId?: string;
     email:string;
     name: string;
     avatar: string;

@@ -5,7 +5,6 @@ import http from 'http';
 import "reflect-metadata";
 import { Server } from 'socket.io';
 import { MainController } from './controllers/socketControllers/MainController';
-import { WorkspaceController } from './controllers/socketControllers/WorkspaceController';
 import File from './model/File';
 import Folder from './model/Folder';
 import routes from './routes';
@@ -45,9 +44,6 @@ const tempFiles = new Folder("1", "src",
     new File("index2.ts", "src", "nada aqui ainda 2", new Date(), new Date()),
     new File("index3.ts", "src", "nada aqui ainda 3", new Date(), new Date())]
  );
-
-
-const workspaceController = new WorkspaceController(namepace, tempFiles, "namespace");
 
 const socketController = new MainController(io);
 
