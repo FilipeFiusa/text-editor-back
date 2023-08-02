@@ -6,4 +6,5 @@ export default class WorkspaceUser {
     connected: boolean;
     socket: Socket;
     mainConnection: Socket;
+    isLeader: boolean;
 }

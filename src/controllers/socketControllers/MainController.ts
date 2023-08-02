@@ -89,7 +89,8 @@ export class MainController{
                 const newWorkspace = await this.workspaceDB.joinWorkspace(userId, inviteCode);
                 this.workspaces.map(workspace => {
                     if(workspace.workspace.inviteCode == inviteCode) {
-                        workspace.newUser();
+                        workspace.newUser(userId);
+                        
                     }
                 })
                 callback(true, "User joined");
@@ -116,10 +117,12 @@ export class MainController{
     }
 
     newWorkspaceControllerInstance = (workspace: Workspace) => {
+        const f: Folder = JSON.parse(JSON.stringify(folderExample[count++ % 2]));
+
         const workspaceController = new WorkspaceController(
             workspace,
             this.serverInstance.of(workspace.inviteCode),
-            folderExample[count++ % 2],
+            f,
             workspace.name,
             this.connectedUsers
         );
