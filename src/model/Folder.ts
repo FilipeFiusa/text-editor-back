@@ -2,15 +2,28 @@ import File from "./File";
 
 class Folder{
     id: string
-    root: string;
+    fullPath: string;
+    parentFolder: string;
+    folderName: string;
     folders: Folder[];
     files: File[];
 
-    constructor(id: string, root: string, folders: Folder[], files: File[]){
+    workspaceId?: number;
+
+    createdAt: Date;
+
+    constructor(id: string, fullPath: string, parentFolder: string, folderName: string, folders: Folder[], files: File[]);
+
+    constructor(id: string, fullPath: string, parentFolder: string, folderName: string, folders: Folder[], files: File[], workspaceId?: number){
         this.id = id;
-        this.root = root;
+        this.fullPath = fullPath;
+        this.parentFolder = parentFolder;
+        this.folderName = folderName;
         this.folders = folders;
         this.files = files;
+        if(workspaceId){
+            this.workspaceId = workspaceId;
+        }
     }
 
     generateJsonForFront = () => {
@@ -20,7 +33,9 @@ class Folder{
 
         return {
             id: this.id,
-            root: this.root,
+            folderName : this.folderName,
+            fullPath: this.fullPath,
+            parentFolder : this.parentFolder,
             files: files
         }
     }

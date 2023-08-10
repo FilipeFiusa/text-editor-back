@@ -36,15 +36,6 @@ const namepace = io.of("namespace");
 //     new File("index3.ts", "src", "nada aqui ainda 3", new Date(), new Date()),
 // ]))
 
-const tempFiles = new Folder("1", "src",
-    [new Folder("2", "src/model", [], [
-        new File("User.ts", "src/model", "nada aqui ainda model", new Date(), new Date()),
-    ])], [
-    new File("index.ts", "src", "nada aqui ainda", new Date(), new Date()),
-    new File("index2.ts", "src", "nada aqui ainda 2", new Date(), new Date()),
-    new File("index3.ts", "src", "nada aqui ainda 3", new Date(), new Date())]
- );
-
 const socketController = new MainController(io);
 
 // io.on('connection', (socket) => {

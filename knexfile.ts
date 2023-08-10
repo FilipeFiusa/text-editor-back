@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import "ts-node/register";
 
 // Update with your config settings.
 

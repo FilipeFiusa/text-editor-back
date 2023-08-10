@@ -44,8 +44,6 @@ export class WorkspaceController{
             socket.emit("send-folders-r", this.workspaceFolder);
 
             socket.on("auth", (userId, callback) => {
-                console.log(userId)
-
                 this.connectedWorkspaceUsers.map(user => {
                     if(user.user.userId === userId){
 
@@ -123,19 +121,14 @@ export class WorkspaceController{
                 socket.to(currentRoom.roomName).emit("receive-text-changed", text);
             })
 
-            socket.on("add-folder", (newFolderName, folder) => {
-                console.log(folder);
-
+            socket.on("add-folder", async (newFolderName, folder) => {
                 if(folder === "/") {
-                    // add on root folder
-
-                    console.log("folder is root");
-
-                    this.workspaceFolder.folders.push(new Folder("123", newFolderName, [], []));
+                    const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, workspace.id.toString());
+                    this.workspaceFolder.folders.push(newFolder);
 
                     this.workspaceFolder.folders.sort((a: Folder,b: Folder) => {
-                        const aName = a.root.split("/").pop().toLocaleLowerCase();
-                        const bName = b.root.split("/").pop().toLocaleLowerCase();
+                        const aName = a.folderName.toLocaleLowerCase();
+                        const bName = b.folderName.toLocaleLowerCase();
                         
                         if (aName < bName) {
                             return -1;
@@ -158,11 +151,12 @@ export class WorkspaceController{
                     console.log("folder found");
                     console.log(searchedFolder);
 
-                    searchedFolder.folders.push(new Folder("123", searchedFolder.root + "/" + newFolderName, [], []));
+                    const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString());
+                    searchedFolder.folders.push(newFolder);
 
                     searchedFolder.folders.sort((a: Folder,b: Folder) => {
-                        const aName = a.root.split("/").pop().toLocaleLowerCase();
-                        const bName = b.root.split("/").pop().toLocaleLowerCase();
+                        const aName = a.folderName.toLocaleLowerCase();
+                        const bName = b.folderName.toLocaleLowerCase();
                         
                         if (aName < bName) {
                             return -1;
@@ -178,13 +172,13 @@ export class WorkspaceController{
                 }
             })
 
-            socket.on("add-file", (newFileName, folder) => {
+            socket.on("add-file", async (newFileName, folder) => {
                 console.log(folder);
 
                 if(folder === "/") {
                     // add on root folder
 
-                    const newFile = new File(newFileName, folder, "", new Date(), new Date())
+                    const newFile =  await this.workspaceDB.addFile(newFileName, this.workspaceFolder, workspace.id);
                     this.workspaceFolder.files.push(newFile);
                     this.createRoom(newFile);
 
@@ -213,7 +207,7 @@ export class WorkspaceController{
                     console.log("folder found");
                     console.log(searchedFolder);
 
-                    const newFile = new File(newFileName, folder, "", new Date(), new Date())
+                    const newFile =  await this.workspaceDB.addFile(newFileName, folder, workspace.id);
                     searchedFolder.files.push(newFile);
                     this.createRoom(newFile);
 
@@ -342,7 +336,7 @@ export class WorkspaceController{
             const subPath = subFolders[i];
             
             for(let f of aux.folders){
-                const aux2 = f.root.split("/").pop();
+                const aux2 = f.fullPath.split("/").pop();
 
                 if(aux2 == subPath){
                     aux = f;
@@ -351,7 +345,7 @@ export class WorkspaceController{
             }
         }
 
-        const currentFolderName = aux.root.split("/").pop();
+        const currentFolderName = aux.fullPath.split("/").pop();
         const destinyFolder = folderPath.split("/").pop();
         console.log("current - "  + currentFolderName)
         console.log("folderPath - "  + destinyFolder)

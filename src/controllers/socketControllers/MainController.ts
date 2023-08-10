@@ -8,9 +8,9 @@ import { WorkspaceDatabaseController } from "../workspace/WorkspaceDatabaseContr
 import { WorkspaceController } from "./WorkspaceController";
 
 const folderExample = [
-    new Folder("1", "/",
-        [new Folder("2", "src", [
-                new Folder("3", "src/model", [] , [new File("User.ts", "src/model", "User.ts asdsadas asdasd asds", new Date(), new Date()),])
+    new Folder("1", "/", "" , "/",
+        [new Folder("2", "src", "/", "src", [
+                new Folder("3", "src/model", "src" , "model", [] , [new File("User.ts", "src/model", "User.ts asdsadas asdasd asds", new Date(), new Date()),])
             ], [
             new File("index.ts", "src", "index.ts", new Date(), new Date()),
         ])], [
@@ -18,9 +18,9 @@ const folderExample = [
         new File("package.json", "/", "package.json", new Date(), new Date()),
         new File("tsconfig.json", "/", "tsconfig.json", new Date(), new Date()),
     ]),
-    new Folder("1", "/",
-        [new Folder("2", "src", [
-                new Folder("3", "src/db", [] , [new File("connection.js", "src/db", "connection", new Date(), new Date()),])
+    new Folder("1", "/", "","/",
+        [new Folder("2", "src", "/" , "src", [
+                new Folder("3", "src/db", "src" ,"db", [] , [new File("connection.js", "src/db", "connection", new Date(), new Date()),])
             ], [
             new File("index.js", "src", "index.js", new Date(), new Date()),
         ])], [
@@ -67,7 +67,7 @@ export class MainController{
                 writeFile("." + workspaceImageName , workspaceImage, (err) => console.log(err));
 
                 const newWorkspace = await this.workspaceDB.getWorkspaceById(workspaceId);
-                this.newWorkspaceControllerInstance(newWorkspace)
+                await this.newWorkspaceControllerInstance(newWorkspace)
                 socket.emit("new-user-workspace", newWorkspace);
 
                 if(typeof callback == 'function'){
@@ -110,25 +110,23 @@ export class MainController{
 
     loadWorkspaceInstances = () => {
         this.workspaceDB.getAllWorkspaces().then(allWorkspaces => {
-            allWorkspaces.map(workspace => {
-                this.newWorkspaceControllerInstance(workspace)
+            allWorkspaces.map(async workspace => {
+                await this.newWorkspaceControllerInstance(workspace)
             })
         })
     }
 
-    newWorkspaceControllerInstance = (workspace: Workspace) => {
-        const f: Folder = JSON.parse(JSON.stringify(folderExample[count++ % 2]));
+    newWorkspaceControllerInstance = async (workspace: Workspace) => {
+        const folder = await this.workspaceDB.getWorkspaceFolder(workspace.id);
 
         const workspaceController = new WorkspaceController(
             workspace,
             this.serverInstance.of(workspace.inviteCode),
-            f,
+            folder,
             workspace.name,
             this.connectedUsers
         );
 
         this.workspaces.push(workspaceController);
     }
-
-
 }
