@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String
+  password String
+  avatar   String?
+  login    String
+  username String
+
+  workspacesOwned Workspace[]
+  workspaces      Workspace[] @relation("UsersOnWorkspaces")
+}
+
+model Workspace {
+  id                  String   @id @default(uuid())
+  name                String
+  workspaceImage      String
+  inviteCode          String
+  workspaceRootFolder String
+  createdAt           DateTime @default(now())
+
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String
+  users   User[] @relation("UsersOnWorkspaces")
+
+  folders Folder[]
+}
+
+model Folder {
+  id           String    @id @default(uuid())
+  parentFolder String
+  fullPath     String
+  folderName   String
+  createdAt    DateTime  @default(now())
+  Workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId  String
+  files        File[]
+
+  parentFolderId String?
+  parent         Folder?  @relation("SubFolders", fields: [parentFolderId], references: [id])
+  subFolders     Folder[] @relation("SubFolders")
+}
+
+model File {
+  id         String   @id @default(uuid())
+  path       String
+  fileName   String
+  content    String
+  createdAt  DateTime @default(now())
+  lastChange DateTime @default(now())
+  Folder     Folder   @relation(fields: [folderId], references: [id])
+  folderId   String
+}

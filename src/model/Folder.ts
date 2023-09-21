@@ -1,4 +1,14 @@
+import { Prisma } from "@prisma/client";
 import File from "./File";
+
+type newFolder = {
+    id: string;
+    parentFolder: string;
+    fullPath: string;
+    folderName: string;
+    createdAt: Date;
+    workspaceId: string;
+}
 
 class Folder{
     id: string
@@ -40,6 +50,9 @@ class Folder{
         }
     }
 
+    static create(folder: newFolder){
+        return new Folder(folder.id, folder.fullPath, folder.parentFolder, folder.folderName, [], [])
+    }
 }
 
 export default Folder;

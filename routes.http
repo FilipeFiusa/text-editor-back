@@ -1,0 +1,25 @@
+# @name get-users
+GET http://localhost:3333/user
+
+###
+
+# @name create-user
+POST http://localhost:3333/user
+Content-Type: application/json
+
+{
+    "login": "test",
+    "email": "test@gmail.com",
+    "password": "12345678"
+}
+
+###
+
+# @name create-session
+POST http://localhost:3333/login
+Content-Type: application/json
+
+{
+    "login": "test",
+    "password": "12345678"
+}

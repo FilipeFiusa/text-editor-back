@@ -6,29 +6,7 @@ import Folder from "../../model/Folder";
 import Workspace from "../../model/Workspace";
 import { WorkspaceDatabaseController } from "../workspace/WorkspaceDatabaseController";
 import { WorkspaceController } from "./WorkspaceController";
-
-const folderExample = [
-    new Folder("1", "/", "" , "/",
-        [new Folder("2", "src", "/", "src", [
-                new Folder("3", "src/model", "src" , "model", [] , [new File("User.ts", "src/model", "User.ts asdsadas asdasd asds", new Date(), new Date()),])
-            ], [
-            new File("index.ts", "src", "index.ts", new Date(), new Date()),
-        ])], [
-        new File("package-lock.json", "/", "package-lock.json", new Date(), new Date()),
-        new File("package.json", "/", "package.json", new Date(), new Date()),
-        new File("tsconfig.json", "/", "tsconfig.json", new Date(), new Date()),
-    ]),
-    new Folder("1", "/", "","/",
-        [new Folder("2", "src", "/" , "src", [
-                new Folder("3", "src/db", "src" ,"db", [] , [new File("connection.js", "src/db", "connection", new Date(), new Date()),])
-            ], [
-            new File("index.js", "src", "index.js", new Date(), new Date()),
-        ])], [
-    new File("package-lock.json", "/", "package-lock.json", new Date(), new Date()),
-    new File("package.json", "/", "package.json", new Date(), new Date()),
-])]
-
-var count = 1;
+import { Prisma } from "@prisma/client";
 
 
 export class MainController{
@@ -46,7 +24,7 @@ export class MainController{
         this.loadWorkspaceInstances();
         
         this.serverInstance.on("connection", socket => {
-            socket.on("user-authentication", async (userId: number) => {
+            socket.on("user-authentication", async (userId: string) => {
                 const user: ConnectedUser = {
                     socket: socket,
                     mainConnection: null,
@@ -90,7 +68,6 @@ export class MainController{
                 this.workspaces.map(workspace => {
                     if(workspace.workspace.inviteCode == inviteCode) {
                         workspace.newUser(userId);
-                        
                     }
                 })
                 callback(true, "User joined");
@@ -110,7 +87,7 @@ export class MainController{
 
     loadWorkspaceInstances = () => {
         this.workspaceDB.getAllWorkspaces().then(allWorkspaces => {
-            allWorkspaces.map(async workspace => {
+            allWorkspaces.map(async (workspace: Workspace) => {
                 await this.newWorkspaceControllerInstance(workspace)
             })
         })
@@ -118,6 +95,7 @@ export class MainController{
 
     newWorkspaceControllerInstance = async (workspace: Workspace) => {
         const folder = await this.workspaceDB.getWorkspaceFolder(workspace.id);
+    
 
         const workspaceController = new WorkspaceController(
             workspace,

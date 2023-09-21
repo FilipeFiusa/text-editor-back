@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response } from "express";
-import connection from '../../db/connection';
+import { prisma } from '../../lib/prisma';
 
 interface User {
     id: number;
@@ -15,24 +15,41 @@ export class UserController{
     public async create(request: Request, response: Response){
         const { login, email, password } = request.body;
         
-        const userExists = await connection<User>("Users").select().where("email", email);
+        const userExists = await prisma.user.findFirst({
+            where: {
+                email: email,
+                login: login
+            }
+        });
+
+        // const userExists = await connection<User>("Users").select().where("email", email);
 
         console.log(userExists)
 
-        if(userExists.length > 0){
+        if(userExists){
             response.status(400).json({msg: "Email already exists"})
             return
         }
 
-        const res = await connection<User>("Users").insert({
-            email, 
-            login,
-            password: bcrypt.hashSync(password, 10), 
-            username: login, 
-            avatar: "" 
-        })
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                login,
+                password: bcrypt.hashSync(password, 10), 
+                username: login, 
+                avatar: "" 
+            }
+        });
 
-        console.log(res);
+        // const res = await connection<User>("Users").insert({
+        //     email, 
+        //     login,
+        //     password: bcrypt.hashSync(password, 10), 
+        //     username: login, 
+        //     avatar: "" 
+        // })
+
+        console.log(newUser);
         
         response.status(200).json({
             msg: "finalizou"
@@ -44,9 +61,11 @@ export class UserController{
 
         //const row = db.prepare('SELECT * FROM Users').all(); 
 
-        const res = await connection<User>("Users").select();
+        // const res = await connection<User>("Users").select();
+
+        const users = await prisma.user.findMany();
         
-        response.json(res);
+        response.json(users);
     }
 
 

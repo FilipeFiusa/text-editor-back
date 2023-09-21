@@ -1,5 +1,6 @@
+import { User } from "@prisma/client";
 import { Socket } from "socket.io";
-import User from "./User";
+
 
 export default class WorkspaceUser {
     user: User;

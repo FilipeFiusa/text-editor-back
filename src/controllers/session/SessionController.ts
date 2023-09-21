@@ -2,12 +2,12 @@ import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { Request, Response } from "express";
 import jwt from 'jsonwebtoken';
-import connection from '../../db/connection';
+import { prisma } from '../../lib/prisma';
 
 dotenv.config();
 
 interface User {
-    id: number;
+    id: string;
     email: string;
     password: string;
     login: string;
@@ -18,8 +18,14 @@ interface User {
 export class SessionController{
     public async create(request: Request, response: Response){
         const { login, password } = request.body;
+
+        const user = await prisma.user.findFirst({
+            where: {
+                login: login
+            }
+        })
         
-        const user = await connection<User>("Users").select().where("login", login).first();
+        // const user = await connection<User>("Users").select().where("login", login).first();
 
         if(!user || !bcrypt.compareSync(password, user.password)){
             response.status(400).json({msg: "Email ou Senha errados"});

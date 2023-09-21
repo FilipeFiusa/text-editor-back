@@ -1,14 +1,13 @@
 import { Namespace } from "socket.io";
 import ConnectedUser from "../../model/ConnectedUser";
-import Folder from "../../model/Folder";
 import Message from "../../model/Message";
 import User from "../../model/User";
 import Workspace from "../../model/Workspace";
 import WorkspaceRoom from "../../model/WorkspaceRoom";
 import WorkspaceUser from "../../model/WorkspaceUser.";
 import { WorkspaceDatabaseController } from "../workspace/WorkspaceDatabaseController";
-import File from "../../model/File";
 
+import type { Folder, File } from "../../model/types"
 
 export class WorkspaceController{
     namespaceInstance: Namespace;
@@ -37,7 +36,7 @@ export class WorkspaceController{
         this.createRooms(folder);
         
         this.namespaceInstance.on("connection", socket => {
-            const user = new User;
+            const user = new User();
             user.socket = socket;
 
 
@@ -45,7 +44,7 @@ export class WorkspaceController{
 
             socket.on("auth", (userId, callback) => {
                 this.connectedWorkspaceUsers.map(user => {
-                    if(user.user.userId === userId){
+                    if(user.user.id === userId){
 
                         user.connected = true;
                         user.socket = socket;
@@ -68,7 +67,7 @@ export class WorkspaceController{
             socket.on("get-users", async (callback) => {
                 if(typeof callback == 'function'){
                     callback(this.currentConnectedUsers());
-                }
+                } 
             });
             
             socket.on("get-messages", async (callback) => {
@@ -77,8 +76,7 @@ export class WorkspaceController{
 
                     callback(this.generalChatMessages);
                 }
-            });
-
+            }); 
 
             socket.on("send-general-message", async (userName, content, callback) => {
                 const generatedCode = (Math.random() + 1);
@@ -123,12 +121,12 @@ export class WorkspaceController{
 
             socket.on("add-folder", async (newFolderName, folder) => {
                 if(folder === "/") {
-                    const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, workspace.id.toString());
-                    this.workspaceFolder.folders.push(newFolder);
+                    const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, workspace.id.toString(), this.workspaceFolder.id);
+                    this.workspaceFolder.subFolders.push(newFolder);
 
-                    this.workspaceFolder.folders.sort((a: Folder,b: Folder) => {
+                    this.workspaceFolder.subFolders.sort((a: Folder,b: Folder) => {
                         const aName = a.folderName.toLocaleLowerCase();
-                        const bName = b.folderName.toLocaleLowerCase();
+                        const bName = b.folderName.toLocaleLowerCase(); 
                         
                         if (aName < bName) {
                             return -1;
@@ -149,12 +147,12 @@ export class WorkspaceController{
 
                 if(searchedFolder){
                     console.log("folder found");
-                    console.log(searchedFolder);
+                    //console.log(searchedFolder);
 
-                    const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString());
-                    searchedFolder.folders.push(newFolder);
+                    const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString(), searchedFolder.id);
+                    searchedFolder.subFolders.push(newFolder);
 
-                    searchedFolder.folders.sort((a: Folder,b: Folder) => {
+                    searchedFolder.subFolders.sort((a: Folder,b: Folder) => {
                         const aName = a.folderName.toLocaleLowerCase();
                         const bName = b.folderName.toLocaleLowerCase();
                         
@@ -173,7 +171,7 @@ export class WorkspaceController{
             })
 
             socket.on("add-file", async (newFileName, folder) => {
-                console.log(folder);
+                //console.log(folder);
 
                 if(folder === "/") {
                     // add on root folder
@@ -205,9 +203,9 @@ export class WorkspaceController{
 
                 if(searchedFolder){
                     console.log("folder found");
-                    console.log(searchedFolder);
+                    //console.log(searchedFolder);
 
-                    const newFile =  await this.workspaceDB.addFile(newFileName, folder, workspace.id);
+                    const newFile =  await this.workspaceDB.addFile(newFileName, searchedFolder, workspace.id);
                     searchedFolder.files.push(newFile);
                     this.createRoom(newFile);
 
@@ -223,11 +221,23 @@ export class WorkspaceController{
                         }
                         return 0;
                     })
-
+ 
                     
                     namespaceInstance.emit("file-list-updated", this.workspaceFolder);
                     namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                 }
+            })
+
+            socket.on("rename-folder", (newFolderName, folderPath) => {
+                console.log(newFolderName, folderPath)
+
+                const searchedFolder = this.findFolder(this.workspaceFolder, folderPath);
+
+                searchedFolder.fullPath = searchedFolder.fullPath.replace(searchedFolder.folderName, newFolderName);
+                searchedFolder.folderName = newFolderName;
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("disconnect", () => {
@@ -253,8 +263,14 @@ export class WorkspaceController{
 
     }
 
-    createRooms = (folder: Folder) => {
-        for(let f of folder.folders){
+    createRooms = (folder: Folder ) => {
+        if(!folder.subFolders){
+            return
+        }
+
+        for (let i = 0; i < folder.subFolders.length; i++) {
+            const f = folder.subFolders[i] as Folder;
+            
             this.createRooms(f);
         }
 
@@ -269,15 +285,15 @@ export class WorkspaceController{
     }
 
     loadUsers = async () =>  {
-        const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);;
+        const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
-        users.map(user => {
+        users.map((user) => {
             const workspaceUser: WorkspaceUser = {
                 connected: false,
                 user: user,
                 socket: null,
                 mainConnection: null,
-                isLeader: user.userId == this.workspace.ownerId ? true : false
+                isLeader: user.id == this.workspace.ownerId ? true : false
             }
     
             this.connectedWorkspaceUsers.push(workspaceUser);
@@ -298,7 +314,7 @@ export class WorkspaceController{
         const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
         users.map(user => {
-            if(userId == user.userId){
+            if(userId == user.id){
                 const workspaceUser: WorkspaceUser = {
                     connected: false,
                     user: user,
@@ -309,20 +325,6 @@ export class WorkspaceController{
         
                 this.connectedWorkspaceUsers.push(workspaceUser);
             }
-
-            // this.connectedWorkspaceUsers.map(connectedUser => {
-            //     if(connectedUser.user.userId == user.id){
-            //         const workspaceUser: WorkspaceUser = {
-            //             connected: false,
-            //             user: user,
-            //             socket: null,
-            //             mainConnection: null,
-            //             isLeader: user.id == this.workspace.ownerId ? true : false
-            //         }
-            
-            //         this.connectedWorkspaceUsers.push(workspaceUser);
-            //     }
-            // })
         })
 
         this.namespaceInstance.emit("users-changed", this.currentConnectedUsers());
@@ -330,12 +332,12 @@ export class WorkspaceController{
 
     findFolder = (currentFolder: Folder, folderPath: string) => {
         const subFolders: string[] = folderPath.split("/");
-        let aux = currentFolder;
+        let aux: any = currentFolder;
 
         for(let i = 0; i <= subFolders.length; i++) {
             const subPath = subFolders[i];
             
-            for(let f of aux.folders){
+            for(let f of aux.subFolders){
                 const aux2 = f.fullPath.split("/").pop();
 
                 if(aux2 == subPath){

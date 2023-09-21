@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 
 export default class ConnectedUser {
-    userId: number;
+    userId: string;
     socket: Socket;
     mainConnection: Socket;
 }

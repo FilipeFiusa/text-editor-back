@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 class File{
     id: string
     fileName: string;
@@ -6,7 +8,7 @@ class File{
     createdAt: Date;
     lastChange: Date;
 
-    workspaceId: number;
+    workspaceId?: number;
 
     constructor(fileName: string, path: string, content: string, createdAt: Date, lastChange: Date);
     
@@ -23,7 +25,9 @@ class File{
     }
 
 
-
+    static create(workspaceId: string, file:  Prisma.FileGetPayload<{ select: { [K in keyof Required<Prisma.FileSelect>]: true } }>){
+        return new File(file.fileName, file.path, file.content, file.createdAt, file.lastChange)
+    }
 
 
 }
