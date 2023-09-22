@@ -291,6 +291,25 @@ export class WorkspaceDatabaseController{
                 id: folderId
             }
         })
-        
+    }
+
+    renameFile = async (newName: string, fileId: string) => {
+        await prisma.file.update({
+            where: {
+                id: fileId
+            },
+            data: {
+                fileName: newName,
+                lastChange: new Date()
+            }
+        })
+    }
+
+    deleteFile = async (fileId: string) => {
+        await prisma.file.deleteMany({
+            where: {
+                id: fileId
+            }
+        })
     }
 }

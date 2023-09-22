@@ -258,6 +258,71 @@ export class WorkspaceController{
                 namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
+            socket.on("rename-file", async (parentFolderId: string, newFileName:string, fileId: string) => {
+                const searchedFolder = this.findFolder(this.workspaceFolder, parentFolderId);
+
+                console.log(parentFolderId, newFileName, fileId) 
+
+                for (let i = 0; i < searchedFolder.files.length; i++) {
+                    const file = searchedFolder.files[i];
+
+                    if(file.id === fileId){
+                        this.workspaceRooms
+
+                        for (let j = 0; j < this.workspaceRooms.length; j++) {
+                            const room = this.workspaceRooms[j];
+
+                            const oldPath = file.path + "/" + file.fileName
+                            
+                            if(room.roomName === oldPath){
+                                let newFullPath = oldPath.split("/");
+                                newFullPath[newFullPath.length-1] = newFileName;
+
+                                file.fileName = newFileName;
+                                room.file = file;
+                                room.roomName = newFullPath.join("/");
+
+                                console.log(room)
+                            }
+                        }
+
+                        await this.workspaceDB.renameFile(newFileName, fileId);
+
+                        namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                        namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                    }
+                    
+                }
+
+                searchedFolder.files
+                
+                //this.workspaceDB.renameFolder(newFolderName, newFullPath.join("/"), searchedFolder.id)
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+            })
+
+            socket.on("delete-file", async (parentFolderId: string, fileId:string) => {
+                const parentFolder = this.findFolder(this.workspaceFolder, parentFolderId); 
+
+                parentFolder.files.forEach((file, index) => {
+                    if(file.id === fileId){
+                        parentFolder.files.splice(index, 1);
+                    }
+                });
+                
+                this.workspaceRooms.forEach((room, index) => {
+                    if(room.file.id === fileId){
+                        parentFolder.files.splice(index, 1);
+                    }
+                }); 
+                
+                this.workspaceDB.deleteFile(fileId)
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+            })
+
             socket.on("disconnect", () => {
                 this.connectedWorkspaceUsers.map(user => {
                     if(!user || !user.socket)
