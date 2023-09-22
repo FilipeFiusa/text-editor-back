@@ -22,7 +22,10 @@ app.use(routes);
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8
+    maxHttpBufferSize: 1e8,
+    cors: {
+        origin: '*',
+    }
 });
 const namepace = io.of("namespace");
 
