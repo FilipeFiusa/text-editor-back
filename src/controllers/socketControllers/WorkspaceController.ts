@@ -119,8 +119,17 @@ export class WorkspaceController{
                 socket.to(currentRoom.roomName).emit("receive-text-changed", text);
             })
 
-            socket.on("add-folder", async (newFolderName, folder) => {
-                if(folder === "/") {
+            socket.on("add-folder", async (newFolderName, folderId) => {
+                const searchedFolder = this.findFolder(this.workspaceFolder, folderId) as Folder;
+
+                console.log("is it null ?")
+                console.log(searchedFolder)
+
+                if(!searchedFolder){
+                    return;
+                }
+
+                if(searchedFolder.fullPath === "/") {
                     const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, workspace.id.toString(), this.workspaceFolder.id);
                     this.workspaceFolder.subFolders.push(newFolder);
 
@@ -142,38 +151,66 @@ export class WorkspaceController{
                     
                     return;
                 }
+
+                const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString(), searchedFolder.id);
+                searchedFolder.subFolders.push(newFolder);
+
+                searchedFolder.subFolders.sort((a: Folder,b: Folder) => {
+                    const aName = a.folderName.toLocaleLowerCase();
+                    const bName = b.folderName.toLocaleLowerCase();
+                    
+                    if (aName < bName) {
+                        return -1;
+                    }
+                    if (aName > bName) {
+                        return 1;
+                    }
+                    return 0;
+                })
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                 
-                const searchedFolder = this.findFolder(this.workspaceFolder, folder);
-
-                if(searchedFolder){
-                    console.log("folder found");
-                    //console.log(searchedFolder);
-
-                    const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString(), searchedFolder.id);
-                    searchedFolder.subFolders.push(newFolder);
-
-                    searchedFolder.subFolders.sort((a: Folder,b: Folder) => {
-                        const aName = a.folderName.toLocaleLowerCase();
-                        const bName = b.folderName.toLocaleLowerCase();
-                        
-                        if (aName < bName) {
-                            return -1;
-                        }
-                        if (aName > bName) {
-                            return 1;
-                        }
-                        return 0;
-                    })
-
-                    namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                    namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
-                }
             })
 
-            socket.on("add-file", async (newFileName, folder) => {
-                //console.log(folder);
+            socket.on("rename-folder", (newFolderName, folderId) => {
+                const searchedFolder = this.findFolder(this.workspaceFolder, folderId);
 
-                if(folder === "/") {
+                let newFullPath = searchedFolder.fullPath.split("/");
+                newFullPath[newFullPath.length-1] = newFolderName;
+
+                searchedFolder.fullPath = newFullPath.join("/");
+                searchedFolder.folderName = newFolderName;
+
+                this.workspaceDB.renameFolder(newFolderName, newFullPath.join("/"), searchedFolder.id)
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+            })
+
+            socket.on("delete-folder", (folderId) => {
+                const folderToDelete = this.findFolder(this.workspaceFolder, folderId);
+                const parentFolder = this.findParentFolder(this.workspaceFolder, folderId);
+                this.workspaceDB.deleteFolder(folderId)
+
+                parentFolder.subFolders.forEach((item, index) => {
+                    if(item === folderToDelete){
+                        parentFolder.subFolders.splice(index, 1);
+                    }
+                }); 
+
+                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+            })
+
+            socket.on("add-file", async (newFileName, folderId) => {
+                const searchedFolder = this.findFolder(this.workspaceFolder, folderId);
+
+                if(!searchedFolder){
+                    return;
+                }
+
+                if(searchedFolder.fullPath === "/") {
                     // add on root folder
 
                     const newFile =  await this.workspaceDB.addFile(newFileName, this.workspaceFolder, workspace.id);
@@ -198,58 +235,34 @@ export class WorkspaceController{
                     
                     return;
                 }
-                
-                const searchedFolder = this.findFolder(this.workspaceFolder, folder);
 
-                if(searchedFolder){
-                    console.log("folder found");
-                    //console.log(searchedFolder);
+                const newFile =  await this.workspaceDB.addFile(newFileName, searchedFolder, workspace.id);
+                searchedFolder.files.push(newFile);
+                this.createRoom(newFile);
 
-                    const newFile =  await this.workspaceDB.addFile(newFileName, searchedFolder, workspace.id);
-                    searchedFolder.files.push(newFile);
-                    this.createRoom(newFile);
-
-                    searchedFolder.files.sort((a: File,b: File) => {
-                        const aName = a.fileName.toLocaleLowerCase();
-                        const bName = b.fileName.toLocaleLowerCase();
-                        
-                        if (aName < bName) {
-                            return -1;
-                        }
-                        if (aName > bName) {
-                            return 1;
-                        }
-                        return 0;
-                    })
- 
+                searchedFolder.files.sort((a: File,b: File) => {
+                    const aName = a.fileName.toLocaleLowerCase();
+                    const bName = b.fileName.toLocaleLowerCase();
                     
-                    namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                    namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
-                }
-            })
+                    if (aName < bName) {
+                        return -1;
+                    }
+                    if (aName > bName) {
+                        return 1;
+                    }
+                    return 0;
+                })
 
-            socket.on("rename-folder", (newFolderName, folderPath) => {
-                console.log(newFolderName, folderPath)
-
-                const searchedFolder = this.findFolder(this.workspaceFolder, folderPath);
-
-                searchedFolder.fullPath = searchedFolder.fullPath.replace(searchedFolder.folderName, newFolderName);
-                searchedFolder.folderName = newFolderName;
-
+                
                 namespaceInstance.emit("file-list-updated", this.workspaceFolder);
                 namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("disconnect", () => {
-
-                console.log(this.connectedWorkspaceUsers);
-
                 this.connectedWorkspaceUsers.map(user => {
                     if(!user || !user.socket)
                         return
 
-                    console.log(user.socket.id)
-                    console.log(socket.id)
                     if(user.socket.id == socket.id){
                         console.log("Disconnected")
                         user.connected = false;
@@ -298,7 +311,7 @@ export class WorkspaceController{
     
             this.connectedWorkspaceUsers.push(workspaceUser);
         })
-    }
+    } 
 
     currentConnectedUsers = () => {
         return this.connectedWorkspaceUsers.map(user => {
@@ -330,30 +343,32 @@ export class WorkspaceController{
         this.namespaceInstance.emit("users-changed", this.currentConnectedUsers());
     }
 
-    findFolder = (currentFolder: Folder, folderPath: string) => {
-        const subFolders: string[] = folderPath.split("/");
-        let aux: any = currentFolder;
+    findFolder = (currentFolder: Folder, folderId: string): Folder => {
+        if(currentFolder.id == folderId){
+            return currentFolder as Folder;
+        }
 
-        for(let i = 0; i <= subFolders.length; i++) {
-            const subPath = subFolders[i];
-            
-            for(let f of aux.subFolders){
-                const aux2 = f.fullPath.split("/").pop();
-
-                if(aux2 == subPath){
-                    aux = f;
-                    break;
-                }
+        if(currentFolder.subFolders && currentFolder.subFolders.length > 0){
+            for (let i = 0; i < currentFolder.subFolders.length; i++) {
+                const f = currentFolder.subFolders[i] as Folder;
+                return this.findFolder(f, folderId) as Folder;
             }
         }
 
-        const currentFolderName = aux.fullPath.split("/").pop();
-        const destinyFolder = folderPath.split("/").pop();
-        console.log("current - "  + currentFolderName)
-        console.log("folderPath - "  + destinyFolder)
+        return null;
+    }
 
-        if(currentFolderName === destinyFolder){
-            return aux;
+    findParentFolder = (currentFolder: Folder, folderId: string): Folder => {
+        if(currentFolder.subFolders && currentFolder.subFolders.length > 0){
+            for (let i = 0; i < currentFolder.subFolders.length; i++) {
+                const f = currentFolder.subFolders[i] as Folder;
+
+                if(f.id === folderId){
+                    return currentFolder;
+                }
+
+                return this.findParentFolder(f, folderId) as Folder;
+            }
         }
 
         return null;

@@ -24,8 +24,6 @@ export class SessionController{
                 login: login
             }
         })
-        
-        // const user = await connection<User>("Users").select().where("login", login).first();
 
         if(!user || !bcrypt.compareSync(password, user.password)){
             response.status(400).json({msg: "Email ou Senha errados"});
@@ -47,7 +45,6 @@ export class SessionController{
         // verify a token symmetric
         jwt.verify(token, process.env.JWT_TOKEN_KEY , (err: Error, decoded: any) => {
             if(!err){
-                console.log(decoded) // bar
                 response.status(200).json({msg: "valid token", decoded});
             }else{
                 response.status(400).json({msg: "invalid token"});

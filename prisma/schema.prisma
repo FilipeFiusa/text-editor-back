@@ -48,7 +48,7 @@ model Folder {
   files        File[]
 
   parentFolderId String?
-  parent         Folder?  @relation("SubFolders", fields: [parentFolderId], references: [id])
+  parent         Folder?  @relation("SubFolders", fields: [parentFolderId], references: [id], onDelete: Cascade)
   subFolders     Folder[] @relation("SubFolders")
 }
 
@@ -59,6 +59,6 @@ model File {
   content    String
   createdAt  DateTime @default(now())
   lastChange DateTime @default(now())
-  Folder     Folder   @relation(fields: [folderId], references: [id])
+  Folder     Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   folderId   String
 }

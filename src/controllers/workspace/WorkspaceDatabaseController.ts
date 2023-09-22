@@ -93,13 +93,29 @@ export class WorkspaceDatabaseController{
     }
 
     getWorkspaceFolder = async (workspaceFolderId: string) => {
+        // Db will load up to 5 nested subfolder 
         const workspaceFolder = await prisma.folder.findFirst({
             include: {
                 files: true,
                 subFolders: {
                     include: {
                         files: true,
-                        subFolders: true
+                        subFolders: {
+                            include: {
+                                files: true,
+                                subFolders: {
+                                    include: {
+                                        files: true,
+                                        subFolders: {
+                                            include: {
+                                                files: true,
+                                                subFolders: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -108,7 +124,6 @@ export class WorkspaceDatabaseController{
                 fullPath: "/",
             }
         })
-
 
         return workspaceFolder;
     }
@@ -189,14 +204,19 @@ export class WorkspaceDatabaseController{
     }
 
     getWorkspaces = async (userId: string) => {       
-        const {workspaces} = await prisma.user.findFirst({
+        const w = await prisma.user.findFirst({
             where: {
                 id: userId
             },
-            select: {
+            select: { 
                 workspaces: true
             }
-        })
+        }) 
+        if(!w) {
+            return [];
+        }
+
+        const { workspaces } = w;
 
         workspaces.forEach(workspace => {
             workspace.workspaceImage = "http://localhost:3333" + workspace.workspaceImage;
@@ -253,4 +273,24 @@ export class WorkspaceDatabaseController{
         return users;
     }
 
+    renameFolder = async (newName: string, newFullPath: string, folderId: string) => {
+        await prisma.folder.update({
+            where: {
+                id: folderId
+            },
+            data: {
+                folderName: newName,
+                fullPath: newFullPath
+            }
+        })
+    }
+
+    deleteFolder = async (folderId: string) => {
+        await prisma.folder.deleteMany({
+            where: {
+                id: folderId
+            }
+        })
+        
+    }
 }

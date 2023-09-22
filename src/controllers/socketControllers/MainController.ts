@@ -95,7 +95,6 @@ export class MainController{
 
     newWorkspaceControllerInstance = async (workspace: Workspace) => {
         const folder = await this.workspaceDB.getWorkspaceFolder(workspace.id);
-    
 
         const workspaceController = new WorkspaceController(
             workspace,
