@@ -1,5 +1,5 @@
-import { Namespace } from "socket.io";
-import ConnectedUser from "../../model/ConnectedUser";
+import { Namespace, Socket } from "socket.io";
+import ConnectedUser from "../../model/MainUser";
 import Message from "../../model/Message";
 import User from "../../model/User";
 import Workspace from "../../model/Workspace";
@@ -8,6 +8,7 @@ import WorkspaceUser from "../../model/WorkspaceUser.";
 import { WorkspaceDatabaseController } from "../workspace/WorkspaceDatabaseController";
 
 import type { Folder, File } from "../../model/types"
+import MainUser from "../../model/MainUser";
 
 export class WorkspaceController{
     namespaceInstance: Namespace;
@@ -26,28 +27,43 @@ export class WorkspaceController{
 
     connectedWorkspaceUsers: WorkspaceUser[] = [];
 
-    constructor(workspace: Workspace, namespaceInstance: Namespace, folder: Folder, workspaceName: string, connectedUsersOnMainConnection: ConnectedUser[]){
+    getMainConnection: (userId : string) => MainUser;
+    startDirectChat: (currentUser: MainUser, receivingUser: MainUser, callback: (roomName: string) => void) => void;
+
+    constructor(
+        workspace: Workspace, 
+        namespaceInstance: 
+        Namespace, 
+        folder: Folder, 
+        workspaceName: string, 
+        getMainConnection: (userId : string) => MainUser,
+        startDirectChat: (currentUser: MainUser, receivingUser: MainUser, callback: (roomName: string) => void) => void
+    ){
         this.workspace = workspace;
         this.namespaceInstance = namespaceInstance;
         this.workspaceFolder = folder;
         this.workspaceName = workspaceName;
+        this.getMainConnection = getMainConnection;
+        this.startDirectChat = startDirectChat;
+    }
 
-        this.loadUsers();
-        this.createRooms(folder);
+    setupWorkspace = async () => {
+        await this.loadUsers();
+        this.createRooms(this.workspaceFolder);
+        //console.log(this.connectedWorkspaceUsers)
         
         this.namespaceInstance.on("connection", socket => {
-            const user = new User();
-            user.socket = socket;
-
+            let workspaceUser: WorkspaceUser;
 
             socket.emit("send-folders-r", this.workspaceFolder);
 
             socket.on("auth", (userId, callback) => {
                 this.connectedWorkspaceUsers.map(user => {
                     if(user.user.id === userId){
-
                         user.connected = true;
                         user.socket = socket;
+
+                        workspaceUser = user;
 
                         this.namespaceInstance.emit("users-changed", this.currentConnectedUsers());
                     }
@@ -92,14 +108,13 @@ export class WorkspaceController{
             })
 
             socket.on("change-room", (roomName) => {
-                console.log(roomName);
                 for(let room of this.workspaceRooms){
                     if(room.roomName == roomName){
-                        if(user.currentRoom && socket.rooms.has(user.currentRoom.roomName)){
-                            socket.leave(user.currentRoom.roomName);
+                        if(workspaceUser.currentRoom && socket.rooms.has(workspaceUser.currentRoom.roomName)){
+                            socket.leave(workspaceUser.currentRoom.roomName);
                         }
 
-                        user.currentRoom = room;
+                        workspaceUser.currentRoom = room;
                         socket.join(roomName);
 
                         socket.emit("room-changed", room.file.content);
@@ -108,7 +123,7 @@ export class WorkspaceController{
             })
 
             socket.on("text-changed", text => {
-                let currentRoom = user.currentRoom;
+                let currentRoom = workspaceUser.currentRoom;
 
                 if(!currentRoom){
                     return;
@@ -130,7 +145,7 @@ export class WorkspaceController{
                 }
 
                 if(searchedFolder.fullPath === "/") {
-                    const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, workspace.id.toString(), this.workspaceFolder.id);
+                    const newFolder = await this.workspaceDB.addFolder(newFolderName, this.workspaceFolder, this.workspace.id.toString(), this.workspaceFolder.id);
                     this.workspaceFolder.subFolders.push(newFolder);
 
                     this.workspaceFolder.subFolders.sort((a: Folder,b: Folder) => {
@@ -146,13 +161,13 @@ export class WorkspaceController{
                         return 0;
                     })
 
-                    namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                    namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                    this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                    this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                     
                     return;
                 }
 
-                const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, workspace.id.toString(), searchedFolder.id);
+                const newFolder = await this.workspaceDB.addFolder(newFolderName, searchedFolder, this.workspace.id.toString(), searchedFolder.id);
                 searchedFolder.subFolders.push(newFolder);
 
                 searchedFolder.subFolders.sort((a: Folder,b: Folder) => {
@@ -168,8 +183,8 @@ export class WorkspaceController{
                     return 0;
                 })
 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                 
             })
 
@@ -184,8 +199,8 @@ export class WorkspaceController{
 
                 this.workspaceDB.renameFolder(newFolderName, newFullPath.join("/"), searchedFolder.id)
 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("delete-folder", (folderId) => {
@@ -199,8 +214,8 @@ export class WorkspaceController{
                     }
                 }); 
 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("add-file", async (newFileName, folderId) => {
@@ -213,7 +228,7 @@ export class WorkspaceController{
                 if(searchedFolder.fullPath === "/") {
                     // add on root folder
 
-                    const newFile =  await this.workspaceDB.addFile(newFileName, this.workspaceFolder, workspace.id);
+                    const newFile =  await this.workspaceDB.addFile(newFileName, this.workspaceFolder, this.workspace.id);
                     this.workspaceFolder.files.push(newFile);
                     this.createRoom(newFile);
 
@@ -230,13 +245,13 @@ export class WorkspaceController{
                         return 0;
                     })
 
-                    namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                    namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                    this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                    this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                     
                     return;
                 }
 
-                const newFile =  await this.workspaceDB.addFile(newFileName, searchedFolder, workspace.id);
+                const newFile =  await this.workspaceDB.addFile(newFileName, searchedFolder, this.workspace.id);
                 searchedFolder.files.push(newFile);
                 this.createRoom(newFile);
 
@@ -254,8 +269,8 @@ export class WorkspaceController{
                 })
 
                 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("rename-file", async (parentFolderId: string, newFileName:string, fileId: string) => {
@@ -288,8 +303,8 @@ export class WorkspaceController{
 
                         await this.workspaceDB.renameFile(newFileName, fileId);
 
-                        namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                        namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                        this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                        this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
                     }
                     
                 }
@@ -298,8 +313,8 @@ export class WorkspaceController{
                 
                 //this.workspaceDB.renameFolder(newFolderName, newFullPath.join("/"), searchedFolder.id)
 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
             })
 
             socket.on("delete-file", async (parentFolderId: string, fileId:string) => {
@@ -319,8 +334,25 @@ export class WorkspaceController{
                 
                 this.workspaceDB.deleteFile(fileId)
 
-                namespaceInstance.emit("file-list-updated", this.workspaceFolder);
-                namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
+                this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
+            })
+
+            socket.on("start-direct-chat", async (receivingUserId: string) => {
+                for(let receivingUser of this.connectedWorkspaceUsers){
+                    if(!receivingUser.mainUser){
+                        receivingUser.mainUser = this.getMainConnection(receivingUserId);
+                    }
+                    
+                    console.log(receivingUser)
+
+                    if(receivingUser.mainUser.id === receivingUserId){
+                        this.startDirectChat(workspaceUser.mainUser, receivingUser.mainUser, (roomName: string) => {
+                            socket.emit("direct-chat-created", roomName)  
+                        }); 
+                        return
+                    }
+                }
             })
 
             socket.on("disconnect", () => {
@@ -329,16 +361,15 @@ export class WorkspaceController{
                         return
 
                     if(user.socket.id == socket.id){
-                        console.log("Disconnected")
                         user.connected = false;
                         user.socket = null;
+                        user.mainUser = null;
                     }
                 })
 
                 this.namespaceInstance.emit("users-changed", this.currentConnectedUsers());
             });
         })
-
     }
 
     createRooms = (folder: Folder ) => {
@@ -366,20 +397,25 @@ export class WorkspaceController{
         const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
         users.map((user) => {
+            const mainUserConnection = this.getMainConnection(user.id)
+
             const workspaceUser: WorkspaceUser = {
                 connected: false,
                 user: user,
+                mainUser: mainUserConnection,
                 socket: null,
-                mainConnection: null,
+                currentRoom: null,
+                status: 3, 
                 isLeader: user.id == this.workspace.ownerId ? true : false
             }
-    
+
             this.connectedWorkspaceUsers.push(workspaceUser);
         })
     } 
 
     currentConnectedUsers = () => {
         return this.connectedWorkspaceUsers.map(user => {
+            console.log(user)
             return {
                 user: user.user,
                 connected: user.connected,
@@ -392,12 +428,16 @@ export class WorkspaceController{
         const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
         users.map(user => {
+            const mainUserConnection = this.getMainConnection(user.id)
+
             if(userId == user.id){
                 const workspaceUser: WorkspaceUser = {
                     connected: false,
                     user: user,
+                    mainUser: mainUserConnection,
                     socket: null,
-                    mainConnection: null,
+                    currentRoom: null,
+                    status: 3, 
                     isLeader: user.id == this.workspace.ownerId ? true : false
                 }
         

@@ -27,28 +27,9 @@ const io = new Server(server, {
         origin: '*',
     }
 });
-const namepace = io.of("namespace");
-
-// const tempFiles: Folder[] = [];
-// tempFiles.push(new Folder("1", "src",
-//     [new Folder("2", "src/model", [], [
-//         new File("User.ts", "src/model", "nada aqui ainda model", new Date(), new Date()),
-//     ])], [
-//     new File("index.ts", "src", "nada aqui ainda", new Date(), new Date()),
-//     new File("index2.ts", "src", "nada aqui ainda 2", new Date(), new Date()),
-//     new File("index3.ts", "src", "nada aqui ainda 3", new Date(), new Date()),
-// ]))
 
 const socketController = new MainController(io);
-
-// io.on('connection', (socket) => {
-//     io.emit("current-text", currentText);
-
-//     socket.on("text-changed", (text) =>{
-//         currentText = text;
-//         socket.broadcast.emit("receive-text", text);
-//     });
-// });
+socketController.setupMainController();
 
 server.listen(process.env.PORT || 3000, () => {
     console.log("Listening on port: " + process.env.PORT || 3000);

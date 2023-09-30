@@ -18,8 +18,11 @@ model User {
   login    String
   username String
 
-  workspacesOwned Workspace[]
-  workspaces      Workspace[] @relation("UsersOnWorkspaces")
+  workspacesOwned  Workspace[]
+  workspaces       Workspace[]     @relation("UsersOnWorkspaces")
+  directMessages   DirectMessage[]
+  directChatsOwned DirectChat[]
+  directChats      DirectChat[]    @relation("UsersOnChats")
 }
 
 model Workspace {
@@ -61,4 +64,23 @@ model File {
   lastChange DateTime @default(now())
   Folder     Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   folderId   String
+}
+
+model DirectChat {
+  id               String          @id @default(uuid())
+  createdAt        DateTime        @default(now())
+  directMessage    DirectMessage[]
+  userParticipants User[]          @relation("UsersOnChats")
+  owner            User            @relation(fields: [ownerId], references: [id])
+  ownerId          String
+}
+
+model DirectMessage {
+  id           String     @id @default(uuid())
+  content      String
+  sentAt       DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+  directChat   DirectChat @relation(fields: [directChatId], references: [id])
+  directChatId String
 }
