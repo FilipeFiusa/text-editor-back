@@ -12,6 +12,25 @@ export type Folder = Prisma.FolderGetPayload<{
     }
 }>
 
+export type DC = Prisma.DirectChatGetPayload<{
+    include: {
+        userParticipants: true,
+        directMessage: true
+    }
+}>
+
+export type DirectMessage = Prisma.DirectMessageGetPayload<{
+    include: {
+        user: {
+            select: {
+                id: true,
+                avatar: true,
+                username: true
+            }
+        }
+    }
+}> 
+
 export type File = Prisma.FileGetPayload<{}>;
 
 export type User = Prisma.UserGetPayload<{}>;

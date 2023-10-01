@@ -18,11 +18,10 @@ model User {
   login    String
   username String
 
-  workspacesOwned  Workspace[]
-  workspaces       Workspace[]     @relation("UsersOnWorkspaces")
-  directMessages   DirectMessage[]
-  directChatsOwned DirectChat[]
-  directChats      DirectChat[]    @relation("UsersOnChats")
+  workspacesOwned Workspace[]
+  workspaces      Workspace[]     @relation("UsersOnWorkspaces")
+  directMessages  DirectMessage[]
+  directChats     DirectChat[]    @relation("UsersOnChats")
 }
 
 model Workspace {
@@ -71,8 +70,6 @@ model DirectChat {
   createdAt        DateTime        @default(now())
   directMessage    DirectMessage[]
   userParticipants User[]          @relation("UsersOnChats")
-  owner            User            @relation(fields: [ownerId], references: [id])
-  ownerId          String
 }
 
 model DirectMessage {

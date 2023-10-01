@@ -9,7 +9,6 @@ export default class WorkspaceUser {
     connected: boolean;
     socket: Socket;
     isLeader: boolean;
-    mainUser: MainUser;
 
     status: number; // 1- Online, 2- AFK, 3- Offline
     currentRoom: WorkspaceRoom;

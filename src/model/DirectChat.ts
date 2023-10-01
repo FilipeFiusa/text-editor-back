@@ -1,21 +1,28 @@
 import MainUser from "./MainUser"
 import Message from "./Message";
-import { User } from "./types";
+import { DC, DirectMessage } from "./types";
 
 export default class DirectChat {
     id: string;
     users: MainUser[];
-    messages: Message[];
-    ownerUser: MainUser;
+    messages: DirectMessage[];
 
-    constructor(id: string, users: MainUser[], messages: Message[], ownerUser: MainUser){
-        this.id = id;
-        this.users = users;
-        this.messages = messages;
-        this.ownerUser = ownerUser;
+    // constructor(id: string, users: MainUser[], messages: Message[], ownerUser: MainUser){
+    //     this.id = id;
+    //     this.users = users;
+    //     this.messages = messages;
+    //     this.ownerUser = ownerUser;
+    // }
+
+    //constructor(directChat: DC);
+
+    constructor(directChat: DC, starterUser: MainUser, secondUser: MainUser){
+        this.id = directChat.id;
+        this.users = [starterUser, secondUser];
+        this.messages = [];
     }
 
-    simplifyObject(){
+    simplifyObject? = () =>{
         return {
             id: this.id,
             users: this.users.map((user) => {return user.simplifyObject()} ),

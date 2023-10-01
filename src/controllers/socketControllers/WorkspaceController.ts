@@ -336,18 +336,15 @@ export class WorkspaceController{
 
                 this.namespaceInstance.emit("file-list-updated", this.workspaceFolder);
                 this.namespaceInstance.emit("file-list-updated-specific", this.workspaceFolder);
-            })
+            }) 
 
             socket.on("start-direct-chat", async (receivingUserId: string) => {
                 for(let receivingUser of this.connectedWorkspaceUsers){
-                    if(!receivingUser.mainUser){
-                        receivingUser.mainUser = this.getMainConnection(receivingUserId);
-                    }
-                    
-                    console.log(receivingUser)
+                    if(receivingUser.user.id === receivingUserId){
+                        const currentUserMain = this.getMainConnection(workspaceUser.user.id);
+                        const receivingUserMain = this.getMainConnection(receivingUser.user.id);
 
-                    if(receivingUser.mainUser.id === receivingUserId){
-                        this.startDirectChat(workspaceUser.mainUser, receivingUser.mainUser, (roomName: string) => {
+                        this.startDirectChat(currentUserMain, receivingUserMain, (roomName: string) => {
                             socket.emit("direct-chat-created", roomName)  
                         }); 
                         return
@@ -363,7 +360,6 @@ export class WorkspaceController{
                     if(user.socket.id == socket.id){
                         user.connected = false;
                         user.socket = null;
-                        user.mainUser = null;
                     }
                 })
 
@@ -397,12 +393,9 @@ export class WorkspaceController{
         const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
         users.map((user) => {
-            const mainUserConnection = this.getMainConnection(user.id)
-
             const workspaceUser: WorkspaceUser = {
                 connected: false,
                 user: user,
-                mainUser: mainUserConnection,
                 socket: null,
                 currentRoom: null,
                 status: 3, 
@@ -415,7 +408,6 @@ export class WorkspaceController{
 
     currentConnectedUsers = () => {
         return this.connectedWorkspaceUsers.map(user => {
-            console.log(user)
             return {
                 user: user.user,
                 connected: user.connected,
@@ -428,13 +420,10 @@ export class WorkspaceController{
         const users = await this.workspaceDB.getWorkspaceUsers(this.workspace.id);
 
         users.map(user => {
-            const mainUserConnection = this.getMainConnection(user.id)
-
             if(userId == user.id){
                 const workspaceUser: WorkspaceUser = {
                     connected: false,
                     user: user,
-                    mainUser: mainUserConnection,
                     socket: null,
                     currentRoom: null,
                     status: 3, 
