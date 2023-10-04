@@ -35,4 +35,18 @@ export type File = Prisma.FileGetPayload<{}>;
 
 export type User = Prisma.UserGetPayload<{}>;
 
-export type Workspace = Prisma.WorkspaceGetPayload<{}>;
+export type Workspace = Prisma.WorkspaceGetPayload<{
+
+}>;
+
+export type WorkspaceMessage = Prisma.WorkspaceMessageGetPayload<{
+    include: {
+        user: {
+            select: {
+                id: true,
+                avatar: true,
+                username: true
+            }
+        }
+    }
+}>;

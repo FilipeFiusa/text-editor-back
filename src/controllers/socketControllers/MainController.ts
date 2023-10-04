@@ -158,15 +158,7 @@ export class MainController{
 
         return null;
     }
-
-    loadWorkspaceInstances = async () => {
-        const allWorkspaces = await this.workspaceDB.getAllWorkspaces();
-        
-        await Promise.all(allWorkspaces.map(async (workspace) => {
-            await this.newWorkspaceControllerInstance(workspace);
-        }))
-    }
-
+    
     loadUsers = async () => {
         const users = await prisma.user.findMany();
 
@@ -221,13 +213,23 @@ export class MainController{
         }
     }
 
+    loadWorkspaceInstances = async () => {
+        const allWorkspaces = await this.workspaceDB.getAllWorkspaces();
+        
+        await Promise.all(allWorkspaces.map(async (workspace) => {
+            await this.newWorkspaceControllerInstance(workspace);
+        }))
+    }
+
     newWorkspaceControllerInstance = async (workspace: Workspace) => {
         const folder = await this.workspaceDB.getWorkspaceFolder(workspace.id);
+        const messages = await this.workspaceDB.getWorkspaceMessages(workspace.id);
 
         const workspaceController = new WorkspaceController(
             workspace,
             this.serverInstance.of(workspace.inviteCode),
             folder,
+            messages,
             workspace.name,
             this.getMainConnection,
             this.startDirectChat

@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { Folder, User } from "../../model/types";
+import { Folder, User, WorkspaceMessage } from "../../model/types";
 
 interface Users_Workspaces{
     userId: string;
@@ -128,6 +128,54 @@ export class WorkspaceDatabaseController{
         return workspaceFolder;
     }
 
+    addMessage = async (content: string, userId: string, workspaceId: string) => {
+        const newMessage: WorkspaceMessage = await prisma.workspaceMessage.create({
+            data: {
+                content: content,
+                user: {
+                    connect: {
+                        id: userId
+                    }
+                },
+                workspace: {
+                    connect: {
+                        id: workspaceId
+                    }
+                }
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        avatar: true,
+                        username: true
+                    }
+                }
+            }
+        })
+
+        return newMessage;
+    }
+
+    getWorkspaceMessages = async (workspaceFolderId: string) => { 
+        const workspaceFolder: WorkspaceMessage[] = await prisma.workspaceMessage.findMany({
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        avatar: true,
+                        username: true,
+                    }
+                }
+            },
+            where: {
+                workspaceId: workspaceFolderId,
+            }
+        })
+
+        return workspaceFolder;
+    }
+
     addFile = async (newFileName: string, folder: Folder, workspaceId: string) => {
         const newFile = await prisma.file.create({
             data: {
@@ -172,7 +220,6 @@ export class WorkspaceDatabaseController{
 
         return user.workspacesOwned.length != 0;
     }
-
     
     joinWorkspace = async (userId: string, workspaceInviteCode: string) => {
         const workspace = await prisma.workspace.findFirst({

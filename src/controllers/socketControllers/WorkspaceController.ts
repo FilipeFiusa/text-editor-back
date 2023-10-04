@@ -7,7 +7,7 @@ import WorkspaceRoom from "../../model/WorkspaceRoom";
 import WorkspaceUser from "../../model/WorkspaceUser.";
 import { WorkspaceDatabaseController } from "../workspace/WorkspaceDatabaseController";
 
-import type { Folder, File } from "../../model/types"
+import type { Folder, File, WorkspaceMessage } from "../../model/types"
 import MainUser from "../../model/MainUser";
 
 export class WorkspaceController{
@@ -22,7 +22,7 @@ export class WorkspaceController{
 
     workspaceDB = new WorkspaceDatabaseController();
 
-    generalChatMessages: Message[] = [];
+    generalChatMessages: WorkspaceMessage[] = [];
     count: number = 1;
 
     connectedWorkspaceUsers: WorkspaceUser[] = [];
@@ -32,9 +32,9 @@ export class WorkspaceController{
 
     constructor(
         workspace: Workspace, 
-        namespaceInstance: 
-        Namespace, 
+        namespaceInstance: Namespace, 
         folder: Folder, 
+        messages: WorkspaceMessage[],
         workspaceName: string, 
         getMainConnection: (userId : string) => MainUser,
         startDirectChat: (currentUser: MainUser, receivingUser: MainUser, callback: (roomName: string) => void) => void
@@ -42,6 +42,7 @@ export class WorkspaceController{
         this.workspace = workspace;
         this.namespaceInstance = namespaceInstance;
         this.workspaceFolder = folder;
+        this.generalChatMessages = messages;
         this.workspaceName = workspaceName;
         this.getMainConnection = getMainConnection;
         this.startDirectChat = startDirectChat;
@@ -94,17 +95,16 @@ export class WorkspaceController{
                 }
             }); 
 
-            socket.on("send-general-message", async (userName, content, callback) => {
-                const generatedCode = (Math.random() + 1);
-                const newMessage = new Message(generatedCode, "", userName, content);
+            socket.on("send-general-message", async (userId, content, callback) => {
+                const newMessage: WorkspaceMessage = await this.workspaceDB.addMessage(content, userId, this.workspace.id);
 
                 this.generalChatMessages.push(newMessage);
 
-                socket.broadcast.emit("new-general-message", newMessage);
+                this.namespaceInstance.emit("new-general-message", newMessage);
 
-                if(typeof callback == 'function'){
-                    callback(newMessage);
-                }
+                // if(typeof callback == 'function'){
+                //     callback(newMessage);
+                // }
             })
 
             socket.on("change-room", (roomName) => {

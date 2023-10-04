@@ -11,32 +11,31 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(uuid())
-  email    String
-  password String
-  avatar   String?
-  login    String
-  username String
-
-  workspacesOwned Workspace[]
-  workspaces      Workspace[]     @relation("UsersOnWorkspaces")
-  directMessages  DirectMessage[]
-  directChats     DirectChat[]    @relation("UsersOnChats")
+  id                String             @id @default(uuid())
+  email             String
+  password          String
+  avatar            String?
+  login             String
+  username          String
+  workspacesOwned   Workspace[]
+  workspaces        Workspace[]        @relation("UsersOnWorkspaces")
+  directMessages    DirectMessage[]
+  directChats       DirectChat[]       @relation("UsersOnChats")
+  workspaceMessages WorkspaceMessage[]
 }
 
 model Workspace {
-  id                  String   @id @default(uuid())
+  id                  String             @id @default(uuid())
   name                String
   workspaceImage      String
   inviteCode          String
   workspaceRootFolder String
-  createdAt           DateTime @default(now())
-
-  owner   User   @relation(fields: [ownerId], references: [id])
-  ownerId String
-  users   User[] @relation("UsersOnWorkspaces")
-
-  folders Folder[]
+  createdAt           DateTime           @default(now())
+  owner               User               @relation(fields: [ownerId], references: [id])
+  ownerId             String
+  users               User[]             @relation("UsersOnWorkspaces")
+  folders             Folder[]
+  workspaceMessages   WorkspaceMessage[]
 }
 
 model Folder {
@@ -80,4 +79,14 @@ model DirectMessage {
   userId       String
   directChat   DirectChat @relation(fields: [directChatId], references: [id])
   directChatId String
+}
+
+model WorkspaceMessage {
+  id          String    @id @default(uuid())
+  content     String
+  sentAt      DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
 }
