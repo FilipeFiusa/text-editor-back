@@ -101,10 +101,6 @@ export class WorkspaceController{
                 this.generalChatMessages.push(newMessage);
 
                 this.namespaceInstance.emit("new-general-message", newMessage);
-
-                // if(typeof callback == 'function'){
-                //     callback(newMessage);
-                // }
             })
 
             socket.on("change-room", (roomName) => {

@@ -6,14 +6,16 @@ import { WorkspaceController } from "./WorkspaceController";
 import MainUser from "../../model/MainUser";
 import DirectChat from "../../model/DirectChat";
 import {v4 as uuidv4} from 'uuid';
-import { prisma } from "../../lib/prisma";
+// import { prisma } from "../../lib/prisma";
 import Message from "../../model/Message";
 import { DC, DirectMessage } from "../../model/types";
+import { MainDatabaseController } from "../workspace/MainDatabaseController";
 
 export class MainController{
     serverInstance: Server;
     workspaces: WorkspaceController[] = [];
     workspaceDB = new WorkspaceDatabaseController();
+    mainDB = new MainDatabaseController();
     connectedUsers: MainUser[] = [];
 
     directChats: DirectChat[] = [];
@@ -90,44 +92,15 @@ export class MainController{
                 socket.emit("new-user-workspace", newWorkspace);
             })
 
-            socket.on("send-direct-message",async (directChatId: string, message: string, callback) => {
-                const newMessage = await prisma.directMessage.create({
-                    data: {
-                        content: message,
-                        user: {
-                            connect: {
-                                id: connectedUser.id
-                            }
-                        },
-                        directChat: {
-                            connect: {
-                                id: directChatId
-                            }
-                        }
-                    },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                avatar: true,
-                                username: true
-                            }
-                        }
-                    }
-                })
-
-                console.log(directChatId) 
-                
+            socket.on("send-direct-message",async (directChatId: string, message: string, callback) => {      
                 const currentChat = this.getDirectChatById(directChatId);
-                console.log(currentChat)
 
                 if(!currentChat){
                     return
                 }
-
+                
+                const newMessage = await this.mainDB.addMessages(message, connectedUser.id, directChatId)
                 currentChat.messages.push(newMessage)
-
-                console.log("New message"); 
 
                 this.serverInstance.to(currentChat.id).emit("new-direct-message", currentChat.id, newMessage)
                 this.serverInstance.to(currentChat.id).emit("new-current-direct-message", currentChat.id, newMessage)
@@ -160,7 +133,7 @@ export class MainController{
     }
     
     loadUsers = async () => {
-        const users = await prisma.user.findMany();
+        const users = await this.mainDB.loadUsers();
 
         for(let user of users){
             this.connectedUsers.push(new MainUser(user.id, user, null, []))
@@ -168,28 +141,10 @@ export class MainController{
     }
 
     loadDirectChats = async () => {
-        const _directChats: DC[] = await prisma.directChat.findMany({
-            include: {
-                userParticipants: true,
-                directMessage: true
-            }
-        });
+        const _directChats: DC[] = await this.mainDB.loadDirectChats();
         
         for(let chat of _directChats){
-            const messages: DirectMessage[] = await prisma.directMessage.findMany({
-                where: {
-                    directChatId: chat.id
-                },
-                include: {
-                    user: {
-                        select: {
-                            avatar: true,
-                            id: true,
-                            username: true
-                        }
-                    }
-                }
-            });
+            const messages: DirectMessage[] = await this.mainDB.loadDirectChatMessage(chat.id)
 
             let tempParticipantUsers = chat.userParticipants.map(user => {
                 for(let mainUser of this.connectedUsers){
@@ -252,23 +207,7 @@ export class MainController{
             } 
         } 
  
-        const _newDirectChat = await prisma.directChat.create({
-            data: {
-                userParticipants: {
-                    connect: [
-                        {
-                            id: starterUser.id
-                        },
-                        {
-                            id: secondUser.id
-                        }
-                    ]
-                }
-            },
-            include: {
-                userParticipants: true
-            }
-        });
+        const _newDirectChat = await this.mainDB.addDirectChat(starterUser.id, secondUser.id)
 
         const newDirectChat: DirectChat = {
             id: _newDirectChat.id,
