@@ -50,6 +50,7 @@ export class WorkspaceController{
 
     setupWorkspace = async () => {
         await this.loadUsers();
+        console.log(this.workspaceFolder)
         this.createRooms(this.workspaceFolder);
         //console.log(this.connectedWorkspaceUsers)
         
@@ -113,7 +114,7 @@ export class WorkspaceController{
                         workspaceUser.currentRoom = room;
                         socket.join(roomName);
 
-                        socket.emit("room-changed", room.file.content);
+                        socket.emit("room-changed", room.file.content, roomName);
                     }
                 }
             })
@@ -125,7 +126,7 @@ export class WorkspaceController{
                     return;
                 }
 
-                currentRoom.file.content = text;
+                currentRoom.file.content = text; 
 
                 socket.to(currentRoom.roomName).emit("receive-text-changed", text);
             })
